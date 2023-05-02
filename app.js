@@ -35,6 +35,40 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.urlencoded({ extended: false }));
 
+passport.use(
+	new LocalStrategy(async (username, password, done) => {
+		try {
+			const user = await User.findOne({ username: username });
+			if (!user) {
+				return done(null, false, { message: "Incorrect username" });
+			}
+			if (user.password !== password) {
+				return done(null, false, { message: "Incorrect password" });
+			}
+			return done(null, user);
+		} catch (err) {
+			return done(err);
+		}
+	})
+);
+passport.serializeUser(function (user, done) {
+	done(null, user.id);
+});
+
+passport.deserializeUser(async function (id, done) {
+	try {
+		const user = await User.findById(id);
+		done(null, user);
+	} catch (err) {
+		done(err);
+	}
+});
+
+app.use(function (req, res, next) {
+	res.locals.currentUser = req.user;
+	next();
+});
+
 app.get("/", (req, res) => res.render("index", { user: req.user }));
 app.get("/sign-up", (req, res) => res.render("sign-up-form"));
 app.post("/sign-up", async (req, res, next) => {
@@ -63,33 +97,4 @@ app.get("/log-out", (req, res, next) => {
 		}
 		res.redirect("/");
 	});
-});
-
-passport.use(
-	new LocalStrategy(async (username, password, done) => {
-		try {
-			const user = await User.findOne({ username: username });
-			if (!user) {
-				return done(null, false, { message: "Incorrect username" });
-			}
-			if (user.password !== password) {
-				return done(null, false, { message: "Incorrect password" });
-			}
-			return done(null, user);
-		} catch (err) {
-			return done(err);
-		}
-	})
-);
-passport.serializeUser(function (user, done) {
-	done(null, user.id);
-});
-
-passport.deserializeUser(async function (id, done) {
-	try {
-		const user = await User.findById(id);
-		done(null, user);
-	} catch (err) {
-		done(err);
-	}
 });
